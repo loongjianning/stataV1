@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高阶实证研究学习路线图：基于雷老师顶刊论文的拆解与进阶</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Chosen Palette: Slate & Indigo / 蓝灰与靛蓝主题。营造严谨、学术、清新的视觉感受。背景使用浅灰白，主色调使用靛蓝代表深度思考，辅助以翡翠绿代表通过（Success/AI）。 -->
+    
+    <!-- Application Structure Plan: 
+    SPA分为四个核心逻辑区域：
+    1. 概览仪表盘 (Dashboard)：使用两个Canvas图表（雷达图、环形图）量化展示学习目标的技能点分布和预期时间分配，为用户建立全局认知。
+    2. 三阶段交互式模块 (Three-Stage Tabs)：通过Tab页签切换，详细拆解“核心因果推断”、“Stata进阶”、“AI科研流”三个阶段的核心内容，避免页面过长，提高信息密度。
+    3. 经典文献与方法映射 (Method-to-Paper Mapping)：以卡片形式展示雷老师的具体论文是如何应用这些方法的（例如油价波动IV、司法改革DID等），将理论与实战结合。
+    4. 动态学习清单与进度追踪 (Interactive Checklist)：提供可勾选的12周学习计划，配合进度条动态反馈，增强用户的掌控感和学习动力。
+    这种结构将宏观规划与微观执行无缝结合，符合“知行合一”的学习路径。
+    -->
+
+    <!-- Visualization & Content Choices:
+    1. 雷达图 (Radar Chart): 目标：展示实证研究者所需的五维能力模型（因果推断、数据处理、Stata编程、AI应用、文献洞察）。互动：Hover查看各项能力满分与当前定位。库：Chart.js。无SVG。
+    2. 环形图 (Doughnut Chart): 目标：展示12周学习计划中三个阶段的时间分配比重。互动：Hover显示具体周数。库：Chart.js。无SVG。
+    3. 阶段切换器 (Tabs): 目标：组织繁杂的学习要点。实现：纯HTML+Tailwind+Vanilla JS，点击切换不同阶段的详细指南和Stata代码示例。无SVG。
+    4. 动态进度条 (Progress Bar): 目标：追踪学习进度。实现：HTML/CSS宽度动态绑定JS复选框状态。无SVG。
+    -->
+
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. All icons are Unicode. All charts are Canvas via Chart.js. -->
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+        
+        body {
+            font-family: 'Noto Sans SC', sans-serif;
+            background-color: #f8fafc; /* slate-50 */
+            color: #1e293b; /* slate-800 */
+        }
+
+        /* 强制规范的Chart Container，满足所有技术要求 */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px; /* 限制最大宽度，保证大屏阅读体验 */
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px; /* 基础高度 */
+            max-height: 350px;
+        }
+        
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 350px;
+            }
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8; 
+        }
+
+        /* 纯CSS实现的Timeline */
+        .timeline-container {
+            border-left: 2px solid #cbd5e1;
+            margin-left: 1rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        .timeline-dot {
+            position: absolute;
+            left: -0.4rem;
+            width: 0.75rem;
+            height: 0.75rem;
+            background-color: #4f46e5; /* indigo-600 */
+            border-radius: 50%;
+            margin-top: 0.25rem;
+        }
+    </style>
+</head>
+<body class="antialiased selection:bg-indigo-100 selection:text-indigo-900">
+
+    <!-- 顶部导航 -->
+    <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16">
+                <div class="flex items-center">
+                    <span class="text-2xl mr-2">📚</span>
+                    <span class="font-bold text-xl text-indigo-900">高阶实证路线图</span>
+                </div>
+                <div class="hidden md:flex space-x-8 items-center">
+                    <a href="#dashboard" class="text-slate-600 hover:text-indigo-600 font-medium transition-colors">概览</a>
+                    <a href="#roadmap" class="text-slate-600 hover:text-indigo-600 font-medium transition-colors">三阶段模块</a>
+                    <a href="#literature" class="text-slate-600 hover:text-indigo-600 font-medium transition-colors">文献映射</a>
+                    <a href="#execution" class="text-slate-600 hover:text-indigo-600 font-medium transition-colors">12周实战清单</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header class="bg-indigo-900 text-white py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h1 class="text-3xl md:text-5xl font-bold mb-4">掌握核心实证方法与 AI 科研流</h1>
+            <p class="text-lg md:text-xl text-indigo-200 max-w-3xl mx-auto mb-8">
+                基于雷振环老师顶刊研究方法论（Causal Inference, 高维固定效应, 官员/城市面板数据匹配），
+                结合大语言模型（Claude/Codex）的自动化数据工作流，为您量身定制的进阶学习指南。
+            </p>
+            <div class="flex justify-center gap-4">
+                <a href="#roadmap" class="bg-white text-indigo-900 px-6 py-3 rounded-md font-bold hover:bg-indigo-50 transition-colors">🚀 开始学习之旅</a>
+                <a href="#execution" class="border border-indigo-300 text-indigo-100 px-6 py-3 rounded-md font-bold hover:bg-indigo-800 transition-colors">✅ 查看进度清单</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 space-y-16">
+
+        <!-- Section 1: Dashboard -->
+        <section id="dashboard" class="scroll-mt-20">
+            <div class="mb-8">
+                <h2 class="text-2xl md:text-3xl font-bold text-slate-800 flex items-center">
+                    <span class="mr-2">📊</span> 学习全局概览
+                </h2>
+                <p class="text-slate-600 mt-2">
+                    本路线图旨在全面提升您的量化研究能力。图表展示了研究所需的核心技能雷达，以及在12周计划中，不同阶段的时间分配权重。
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- 技能雷达图 -->
+                <div class="glass-card rounded-xl p-6">
+                    <h3 class="text-lg font-bold text-center mb-4 text-slate-700">复合型学术能力雷达</h3>
+                    <div class="chart-container">
+                        <canvas id="skillsRadarChart"></canvas>
+                    </div>
+                    <p class="text-sm text-center text-slate-500 mt-4">目标：在因果推断与数据清洗能力上达到极高熟练度，同时融入前沿AI应用。</p>
+                </div>
+
+                <!-- 时间分配环形图 -->
+                <div class="glass-card rounded-xl p-6">
+                    <h3 class="text-lg font-bold text-center mb-4 text-slate-700">12周学习时间分配</h3>
+                    <div class="chart-container">
+                        <canvas id="timeAllocationChart"></canvas>
+                    </div>
+                    <p class="text-sm text-center text-slate-500 mt-4">科学分配精力：基础夯实、工具进阶与提效工具的有机结合。</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 2: 三阶段详细路线图 -->
+        <section id="roadmap" class="scroll-mt-20">
+            <div class="mb-8">
+                <h2 class="text-2xl md:text-3xl font-bold text-slate-800 flex items-center">
+                    <span class="mr-2">🛤️</span> 进阶路线图：三大核心模块
+                </h2>
+                <p class="text-slate-600 mt-2">
+                    点击下方标签页，深入了解每个阶段的具体学习内容、Stata实操要点及AI提示词示例。这是您从理论走向顶刊实证操作的桥梁。
+                </p>
+            </div>
+
+            <div class="glass-card rounded-xl overflow-hidden shadow-sm border border-slate-200">
+                <!-- Tabs Header -->
+                <div class="flex flex-col sm:flex-row border-b border-slate-200 bg-slate-50">
+                    <button class="tab-btn flex-1 py-4 px-6 text-center font-bold text-indigo-700 border-b-2 border-indigo-600 bg-white focus:outline-none transition-colors" data-target="stage1">
+                        阶段一：因果推断与核心模型
+                    </button>
+                    <button class="tab-btn flex-1 py-4 px-6 text-center font-medium text-slate-500 hover:text-indigo-600 hover:bg-slate-100 focus:outline-none transition-colors" data-target="stage2">
+                        阶段二：Stata 进阶与面板数据
+                    </button>
+                    <button class="tab-btn flex-1 py-4 px-6 text-center font-medium text-slate-500 hover:text-indigo-600 hover:bg-slate-100 focus:outline-none transition-colors" data-target="stage3">
+                        阶段三：AI Agent 辅助科研
+                    </button>
+                </div>
+
+                <!-- Tabs Content -->
+                <div class="p-6 md:p-8 bg-white min-h-[400px]">
+                    
+                    <!-- 阶段一内容 -->
+                    <div id="stage1" class="tab-content active space-y-6">
+                        <div class="flex items-start gap-4">
+                            <div class="text-4xl">🔬</div>
+                            <div>
+                                <h3 class="text-xl font-bold text-slate-800">第一阶段：掌握核心实证方法 (Causal Inference)</h3>
+                                <p class="text-slate-600 mt-1">深挖雷老师论文中的计量内核，理解政策评估与因果识别机制。</p>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
+                            <div class="border border-indigo-100 bg-indigo-50/30 rounded-lg p-5">
+                                <h4 class="font-bold text-indigo-800 flex items-center mb-2"><span class="mr-2">📈</span>双重差分法 (DID) & 事件研究法</h4>
+                                <ul class="list-disc pl-5 text-slate-700 space-y-2 text-sm">
+                                    <li><strong>应用场景：</strong> 政策冲击评估 (如：司法垂直管理改革、4万亿经济刺激)。</li>
+                                    <li><strong>核心要求：</strong> 必须掌握平行趋势检验 (Parallel Trend) 与动态效应图的绘制 (Event Study)。</li>
+                                    <li><strong>关注重点：</strong> 政策交乘项设定，控制组的选择逻辑。</li>
+                                </ul>
+                            </div>
+                            <div class="border border-blue-100 bg-blue-50/30 rounded-lg p-5">
+                                <h4 class="font-bold text-blue-800 flex items-center mb-2"><span class="mr-2">🌍</span>工具变量法 (IV)</h4>
+                                <ul class="list-disc pl-5 text-slate-700 space-y-2 text-sm">
+                                    <li><strong>应用场景：</strong> 解决内生性问题，寻找外生冲击。</li>
+                                    <li><strong>高阶案例：</strong> 利用“全球油价波动”构建针对产油/依赖性地方收入的“Bartik”式外生冲击 (参考：<span class="italic text-slate-500">Seeing Corruption Differently</span>)。</li>
+                                    <li><strong>检验要求：</strong> 第一阶段F值检验、排他性约束论证。</li>
+                                </ul>
+                            </div>
+                            <div class="border border-emerald-100 bg-emerald-50/30 rounded-lg p-5">
+                                <h4 class="font-bold text-emerald-800 flex items-center mb-2"><span class="mr-2">📏</span>断点回归 (RD)</h4>
+                                <ul class="list-disc pl-5 text-slate-700 space-y-2 text-sm">
+                                    <li><strong>应用场景：</strong> 基于硬性行政/人口门槛。</li>
+                                    <li><strong>高阶案例：</strong> 城市人口是否达到300万对地铁项目审批及市长晋升的影响。</li>
+                                    <li><strong>核心检验：</strong> 驱动变量 (Running Variable) 的密度检验 (McCrary density test)。</li>
+                                </ul>
+                            </div>
+                            <div class="border border-purple-100 bg-purple-50/30 rounded-lg p-5">
+                                <h4 class="font-bold text-purple-800 flex items-center mb-2"><span class="mr-2">🛡️</span>稳健性检验 (Robustness)</h4>
+                                <ul class="list-disc pl-5 text-slate-700 space-y-2 text-sm">
+                                    <li><strong>替换变量：</strong> 使用客观数据如夜间灯光亮度代替GDP。</li>
+                                    <li><strong>安慰剂检验 (Placebo)：</strong> 随机打乱政策时间节点或处理组身份，绘制T值/系数分布图。</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 阶段二内容 -->
+                    <div id="stage2" class="tab-content hidden space-y-6">
+                        <div class="flex items-start gap-4">
+                            <div class="text-4xl">💻</div>
+                            <div>
+                                <h3 class="text-xl font-bold text-slate-800">第二阶段：进阶 Stata 编程技术与数据清洗</h3>
+                                <p class="text-slate-600 mt-1">处理中国城市面板数据、官员政治升迁数据，掌握现代高维固定效应运算。</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                                <h4 class="font-bold text-slate-800 mb-2">1. 高维固定效应与聚类标准误 (High-Dimensional FE)</h4>
+                                <p class="text-sm text-slate-600 mb-2">现代实证标配命令 <code class="bg-slate-200 px-1 rounded">reghdfe</code>。常用于处理包含城市(City)、年份(Year)甚至省份-年份交乘(Province*Year)固定效应的模型。</p>
+                                <div class="bg-slate-800 text-green-400 font-mono text-sm p-3 rounded overflow-x-auto whitespace-pre">
+// 标准高维固定效应模型及聚类标准误调整
+reghdfe Y X1 X2 controls, absorb(citycode year i.provcode#c.year) vce(cluster citycode)</div>
+                            </div>
+
+                            <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                                <h4 class="font-bold text-slate-800 mb-2">2. 宏微观数据匹配 (Data Merging)</h4>
+                                <p class="text-sm text-slate-600 mb-2">将《中国城市统计年鉴》的宏观特征与 CCER Elite Database（官员背景库）匹配。</p>
+                                <div class="bg-slate-800 text-green-400 font-mono text-sm p-3 rounded overflow-x-auto whitespace-pre">
+// 处理官员换届与城市年度数据的不对齐问题
+use "city_macro.dta", clear
+// 使用城市代码和年份进行匹配
+merge 1:m citycode year using "ccer_officials.dta"
+keep if _merge == 3
+drop _merge</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 阶段三内容 -->
+                    <div id="stage3" class="tab-content hidden space-y-6">
+                        <div class="flex items-start gap-4">
+                            <div class="text-4xl">🤖</div>
+                            <div>
+                                <h3 class="text-xl font-bold text-slate-800">第三阶段：拥抱 AI，构建 Agent 辅助科研流</h3>
+                                <p class="text-slate-600 mt-1">利用 Claude / ChatGPT (Codex) 极大提升数据清洗、排错与文献综述的效率。</p>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                            <!-- Code Auto -->
+                            <div class="bg-white border-l-4 border-indigo-500 shadow-sm p-4 rounded-r-lg">
+                                <div class="font-bold text-indigo-700 flex items-center mb-2">⚙️ 代码自动化</div>
+                                <p class="text-xs text-slate-500 mb-2">快速完成脏活累活。</p>
+                                <div class="bg-indigo-50 text-indigo-900 text-xs p-2 rounded italic font-mono">
+                                    "Claude, 我有一份城市年鉴数据，变量名全是拼音首字母，请帮我写一个批量重命名变量并添加英文Label的Stata脚本，变量字典附后..."
+                                </div>
+                            </div>
+                            
+                            <!-- Debug -->
+                            <div class="bg-white border-l-4 border-red-500 shadow-sm p-4 rounded-r-lg">
+                                <div class="font-bold text-red-700 flex items-center mb-2">🐛 错误排查</div>
+                                <p class="text-xs text-slate-500 mb-2">应对无尽的红色报错。</p>
+                                <div class="bg-red-50 text-red-900 text-xs p-2 rounded italic font-mono">
+                                    "运行reghdfe时提示存在严重的共线性(omitted variables)，特别是加入省份*年份固定效应后。请帮我写一段代码检测具体是哪些控制变量导致的，并给出处理建议。"
+                                </div>
+                            </div>
+
+                            <!-- Lit Review -->
+                            <div class="bg-white border-l-4 border-emerald-500 shadow-sm p-4 rounded-r-lg">
+                                <div class="font-bold text-emerald-700 flex items-center mb-2">📚 智能文献综述</div>
+                                <p class="text-xs text-slate-500 mb-2">跨领域知识整合。</p>
+                                <div class="bg-emerald-50 text-emerald-900 text-xs p-2 rounded italic font-mono">
+                                    "请帮我梳理关于‘中国央地财政关系与地方公共品供给’的近十年顶刊文献，以表格形式输出：作者年份、核心数据、核心识别方法(DID/IV)、主要发现。"
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- Section 3: 核心文献指引 -->
+        <section id="literature" class="scroll-mt-20">
+            <div class="mb-8">
+                <h2 class="text-2xl md:text-3xl font-bold text-slate-800 flex items-center">
+                    <span class="mr-2">📖</span> 实证方法在论文中的真实映射
+                </h2>
+                <p class="text-slate-600 mt-2">
+                    通过分析您提供的雷老师及合作者的研究成果，我们可以直观看到上述高级方法的实际应用场景。点击卡片了解方法详情。
+                </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- Paper Card 1 -->
+                <div class="glass-card rounded-xl p-6 relative group hover:-translate-y-1 transition-transform cursor-pointer">
+                    <div class="absolute top-0 right-0 bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-xl">IV (工具变量)</div>
+                    <h3 class="font-bold text-lg text-slate-800 leading-snug mb-2">Seeing Corruption Differently</h3>
+                    <p class="text-sm text-slate-500 italic mb-4">专家与公众腐败感知差异的信息学视角</p>
+                    <div class="text-sm text-slate-700 space-y-2">
+                        <p><strong>实证亮点：</strong> 利用<span class="text-indigo-600 font-semibold">国际油价的剧烈波动</span>作为宏观经济波动的“外生冲击”，结合面板数据，论证专家评分系统如何被非制度性因素(如经济好坏)扭曲。</p>
+                        <p><strong>技术落点：</strong> 截面与面板IV回归分析，绘制相关性图表验证第一阶段逻辑。</p>
+                    </div>
+                </div>
+
+                <!-- Paper Card 2 -->
+                <div class="glass-card rounded-xl p-6 relative group hover:-translate-y-1 transition-transform cursor-pointer">
+                    <div class="absolute top-0 right-0 bg-emerald-100 text-emerald-800 text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-xl">DID (双重差分)</div>
+                    <h3 class="font-bold text-lg text-slate-800 leading-snug mb-2">Making Local Courts Work</h3>
+                    <p class="text-sm text-slate-500 italic mb-4">司法垂直管理改革与地方保护主义</p>
+                    <div class="text-sm text-slate-700 space-y-2">
+                        <p><strong>实证亮点：</strong> 巧妙利用中国司法系统控制权逐步<span class="text-indigo-600 font-semibold">向上集权(recentralization)</span>的改革节点。</p>
+                        <p><strong>技术落点：</strong> 搜集 2012-2018 上市公司诉讼微观数据，构建 DID 模型，并控制了大量高维固定效应以剔除干扰。</p>
+                    </div>
+                </div>
+
+                <!-- Paper Card 3 -->
+                <div class="glass-card rounded-xl p-6 relative group hover:-translate-y-1 transition-transform cursor-pointer">
+                    <div class="absolute top-0 right-0 bg-purple-100 text-purple-800 text-xs font-bold px-3 py-1 rounded-bl-lg rounded-tr-xl">TWFE / Database</div>
+                    <h3 class="font-bold text-lg text-slate-800 leading-snug mb-2">The Political Resource Blessing...</h3>
+                    <p class="text-sm text-slate-500 italic mb-4">庇护网络、基础设施投资与中国经济发展</p>
+                    <div class="text-sm text-slate-700 space-y-2">
+                        <p><strong>实证亮点：</strong> 深度依赖 <span class="text-indigo-600 font-semibold">CCER Elite Database</span> 追踪官员庇护网络。处理复杂的宏观基础设施面板数据。</p>
+                        <p><strong>技术落点：</strong> 使用 <code>reghdfe</code> (Correia, 2016) 执行双向固定效应估计，通过精细的数据清洗识别政治网络。</p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Section 4: 交互式12周执行清单 -->
+        <section id="execution" class="scroll-mt-20">
+            <div class="mb-8">
+                <h2 class="text-2xl md:text-3xl font-bold text-slate-800 flex items-center">
+                    <span class="mr-2">✅</span> 12周行动路线与追踪
+                </h2>
+                <p class="text-slate-600 mt-2">
+                    将方法论转化为可执行的每周任务。勾选完成的任务，动态查看您的学习进度。
+                </p>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 md:p-8">
+                <!-- 进度条UI -->
+                <div class="mb-8">
+                    <div class="flex justify-between items-end mb-2">
+                        <span class="text-sm font-bold text-slate-600">总体完成进度</span>
+                        <span id="progressText" class="text-2xl font-bold text-indigo-600">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-100 rounded-full h-4 overflow-hidden border border-slate-200">
+                        <div id="progressBar" class="bg-indigo-500 h-4 rounded-full transition-all duration-500 ease-out" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    
+                    <!-- Month 1 -->
+                    <div>
+                        <h3 class="font-bold text-lg text-indigo-900 border-b-2 border-indigo-100 pb-2 mb-4">Month 1: 基石构建 (因果识别)</h3>
+                        <div class="space-y-3 task-list" data-weight="4">
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" class="task-checkbox mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition-colors">Week 1: 复习潜在结果框架 (Rubin Causal Model)，阅读《Seeing Corruption Differently》方法部分。</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" class="task-checkbox mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition-colors">Week 2: 深入 DID 理论，学习平行趋势检验与动态效应(Event Study)代码逻辑。</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" class="task-checkbox mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition-colors">Week 3: 掌握 IV 原理，拆解“Bartik”式工具变量构造方法。</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" class="task-checkbox mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition-colors">Week 4: 熟悉 RD 断点回归，实操 McCrary Density Test。</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Month 2 -->
+                    <div>
+                        <h3 class="font-bold text-lg text-indigo-900 border-b-2 border-indigo-100 pb-2 mb-4">Month 2: 兵器精通 (Stata & Data)</h3>
+                        <div class="space-y-3 task-list" data-weight="4">
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" class="task-checkbox mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition-colors">Week 5: 安装并熟练运用 <code>reghdfe</code> 处理多维固定效应。</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" class="task-checkbox mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition-colors">Week 6: 掌握聚类标准误(Cluster SE)的不同层级设定(市级/省级)。</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" class="task-checkbox mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition-colors">Week 7: 实操《中国城市统计年鉴》面板数据的清理与转置(Reshape)。</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" class="task-checkbox mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition-colors">Week 8: 演练宏微观匹配，合并官员政治升迁数据(如 CCER 数据库)。</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Month 3 -->
+                    <div>
+                        <h3 class="font-bold text-lg text-indigo-900 border-b-2 border-indigo-100 pb-2 mb-4">Month 3: 提效与实战 (AI Agent)</h3>
+                        <div class="space-y-3 task-list" data-weight="4">
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" class="task-checkbox mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition-colors">Week 9: 注册并使用 Claude，设计针对Stata报错调试的专属Prompt。</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" class="task-checkbox mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition-colors">Week 10: 利用 AI 编写复杂的数据重命名、缺失值填补自动化脚本。</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" class="task-checkbox mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition-colors">Week 11: 综合复现：尝试复刻雷老师论文中某张核心附图(如 Event Study图)。</span>
+                            </label>
+                            <label class="flex items-start gap-3 cursor-pointer group">
+                                <input type="checkbox" class="task-checkbox mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                                <span class="text-sm text-slate-700 group-hover:text-indigo-600 transition-colors">Week 12: 鲁棒性进阶：构建安慰剂检验代码并运用到自己的数据中。</span>
+                            </label>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-slate-900 text-slate-400 py-8 mt-16 text-center text-sm">
+        <div class="max-w-7xl mx-auto px-4">
+            <p>基于对雷振环等学者公开发表文献之方法论分析提炼，仅供学习交流使用。</p>
+            <p class="mt-2">Designed with Data Analysis & AI Workflow in mind.</p>
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            
+            // --- 1. Tab Switching Logic ---
+            const tabBtns = document.querySelectorAll('.tab-btn');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabBtns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    // Reset all
+                    tabBtns.forEach(b => {
+                        b.classList.remove('text-indigo-700', 'border-indigo-600', 'bg-white', 'font-bold');
+                        b.classList.add('text-slate-500', 'hover:text-indigo-600', 'border-transparent', 'font-medium', 'bg-slate-50');
+                    });
+                    tabContents.forEach(c => {
+                        c.classList.add('hidden');
+                        c.classList.remove('active');
+                    });
+
+                    // Activate clicked
+                    btn.classList.remove('text-slate-500', 'hover:text-indigo-600', 'border-transparent', 'font-medium', 'bg-slate-50');
+                    btn.classList.add('text-indigo-700', 'border-indigo-600', 'bg-white', 'font-bold');
+                    
+                    const targetId = btn.getAttribute('data-target');
+                    const targetContent = document.getElementById(targetId);
+                    targetContent.classList.remove('hidden');
+                    // Small delay for transition effect
+                    setTimeout(() => { targetContent.classList.add('active'); }, 10);
+                });
+            });
+
+            // --- 2. Chart.js Initialization ---
+            // Radar Chart: Skill Matrix
+            const ctxRadar = document.getElementById('skillsRadarChart').getContext('2d');
+            new Chart(ctxRadar, {
+                type: 'radar',
+                data: {
+                    labels: ['因果识别 (DID/IV)', '高级面板数据处理', '高维固定效应 (Stata)', '安慰剂与鲁棒性检验', 'AI Agent 工作流'],
+                    datasets: [{
+                        label: '目标掌握度 (%)',
+                        data: [90, 85, 95, 80, 85],
+                        backgroundColor: 'rgba(79, 70, 229, 0.2)', // indigo-600 alpha
+                        borderColor: 'rgba(79, 70, 229, 1)',
+                        pointBackgroundColor: 'rgba(79, 70, 229, 1)',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(79, 70, 229, 1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        r: {
+                            angleLines: { color: 'rgba(0, 0, 0, 0.1)' },
+                            grid: { color: 'rgba(0, 0, 0, 0.1)' },
+                            pointLabels: {
+                                font: { family: "'Noto Sans SC', sans-serif", size: 12 },
+                                color: '#475569'
+                            },
+                            ticks: { display: false, min: 0, max: 100 }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.label + ': 要求达到 ' + context.raw + '% 熟练度';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Doughnut Chart: Time Allocation
+            const ctxDoughnut = document.getElementById('timeAllocationChart').getContext('2d');
+            new Chart(ctxDoughnut, {
+                type: 'doughnut',
+                data: {
+                    labels: ['阶段一：核心方法论研读', '阶段二：Stata实操与数据', '阶段三：AI效能提升'],
+                    datasets: [{
+                        data: [35, 45, 20], // Percentages
+                        backgroundColor: [
+                            '#4f46e5', // indigo-600
+                            '#0ea5e9', // sky-500
+                            '#10b981'  // emerald-500
+                        ],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '70%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                font: { family: "'Noto Sans SC', sans-serif" },
+                                padding: 20,
+                                usePointStyle: true,
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ' ' + context.label + ': 约占 ' + context.raw + '% 的时间';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // --- 3. Interactive Checklist Progress ---
+            const checkboxes = document.querySelectorAll('.task-checkbox');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+
+            function updateProgress() {
+                const total = checkboxes.length;
+                const checked = document.querySelectorAll('.task-checkbox:checked').length;
+                const percentage = total === 0 ? 0 : Math.round((checked / total) * 100);
+                
+                progressBar.style.width = `${percentage}%`;
+                progressText.textContent = `${percentage}%`;
+                
+                // 颜色渐变反馈
+                if(percentage === 100) {
+                    progressBar.classList.remove('bg-indigo-500');
+                    progressBar.classList.add('bg-emerald-500');
+                    progressText.classList.remove('text-indigo-600');
+                    progressText.classList.add('text-emerald-600');
+                } else {
+                    progressBar.classList.add('bg-indigo-500');
+                    progressBar.classList.remove('bg-emerald-500');
+                    progressText.classList.add('text-indigo-600');
+                    progressText.classList.remove('text-emerald-600');
+                }
+            }
+
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', updateProgress);
+            });
+
+            // --- 4. Smooth Scrolling for internal links ---
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    document.querySelector(this.getAttribute('href')).scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+            });
+        });
+    </script>
+</body>
+</html>
